@@ -1,38 +1,56 @@
 from app.db import database
-from typing import Dict, Any
+from bson import ObjectId
 
 collection = database["items"]
 
-def convert_objectid_to_str(document):
-    if '_id' in document:
-        document['id'] = str(document['_id'])
-        del document['_id']
-    return document
+async def get_document(doc_id: str):
+    try:
+        object_id = ObjectId(doc_id)
+        document = await collection.find_one({"_id": object_id})
+        # Convert ObjectId to str for serialization
+        if document:
+            document['_id'] = str(document['_id'])
+        return document
+    except Exception as e:
+        return {"error": str(e)}
 
-async def create_item(name: str, description: str)-> Dict[str, Any]:
-    document = {"name": name, "description": description}
-    results = await collection.insert_one(document)
-    document["_id"] = str(results.inserted_id)
-    return document
+# Function to fetch all documents
+async def get_documents():
+    try:
+        documents = await collection.find({}).to_list(None)
+        # Convert ObjectId to str for serialization
+        for doc in documents:
+            doc['_id'] = str(doc['_id'])
+        return documents
+    except Exception as e:
+        return {"error": str(e)}
+    
+async def insert_document(name: str, description: str):
+    try:
+        result = await collection.insert_one({"name":name, "description":description})
+        return {"inserted_id": str(result.inserted_id)} 
+    except Exception as e:
+        return {"error": str(e)}
 
+async def update_document(doc_id: str, name: str, description: str):
+    try:
+        object_id = ObjectId(doc_id)
+        result = await collection.update_one({"_id":object_id},{"$set": {"name":name, "description":description}})
+        if result.matched_count:
+            return await get_document()
+        return None
+    except Exception as e:
+        return {"error": str(e)}
+    
+async def delete_document(doc_id: str):
+    try:
+        object_id = ObjectId(doc_id)
+        result = await collection.delete_one({"_id":object_id})
+        if result.deleted_count == 1:
+            return {"success": True, "message": f"Document with _id {doc_id} deleted successfully."}
+        else:
+            return {"success": False, "message": f"Document with _id {doc_id} not found."}
 
-async def get_item(item_id: str)-> Dict[str, Any]:
-    document = await collection.find_one({"_id":item_id})
-    if document:
-         return convert_objectid_to_str(document)
-    return document
-
-
-async def update_item(item_id: str, name: str, description: str)-> Dict[str, Any]:
-    result = await collection.update_one(
-        {"_id": item_id},
-        {"$set": {"name": name, "description": description}},
-        upsert=False
-    )
-    if result.matched_count:
-        return await get_item(item_id)
-    return None
-
-async def delete_item(item_id: str) -> bool:
-    result = await collection.delete_one({"_id": item_id})
-    return result.deleted_count > 0
+    except Exception as e:
+        return {"error": str(e)}
+    

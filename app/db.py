@@ -1,6 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient
-from typing import List
 import os
 from dotenv import load_dotenv
 
