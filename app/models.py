@@ -10,3 +10,5 @@ class ItemModel(Document):
             "name": self.name,
             "description": self.description
         }
+    #set db collection name if you want
+    meta = {'collection': 'custom_items'}
